@@ -1,0 +1,5 @@
+rootProject.name = 'clevertec-session-starter'
+include 'session-service'
+include 'session-starter-spring-boot'
+include 'module-for-testing'
+
