@@ -13,8 +13,6 @@ import vlad.kuchuk.service.SessionService;
 public class SessionController {
 
     private final SessionService sessionService;
-    // 2. В сервисе должны быть методы создания и получения текущей сессии по логину
-    // 3. В сессии должен быть айдишник, логин, которому принадлежит сессия и время открытия сессии
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)

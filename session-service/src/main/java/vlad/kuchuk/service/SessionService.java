@@ -1,20 +1,26 @@
 package vlad.kuchuk.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vlad.kuchuk.dto.SessionMapper;
 import vlad.kuchuk.dto.SessionRequest;
 import vlad.kuchuk.dto.SessionResponse;
+import vlad.kuchuk.entity.Session;
 import vlad.kuchuk.exception.SessionCreationException;
+import vlad.kuchuk.sessioncleaner.SessionCleanupProperties;
 import vlad.kuchuk.repository.SessionRepository;
 
-import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class SessionService {
 
     private final SessionRepository sessionRepository;
@@ -34,5 +40,10 @@ public class SessionService {
                 .map(sessionMapper::toDto)
                 .findFirst()
                 .orElseThrow(() -> new SessionCreationException("Failed to create session"));
+    }
+
+    @Transactional
+    public void deleteAllExpiredSessions(LocalDateTime curDateTime) {
+        sessionRepository.deleteSessionByOpeningTimeBefore(curDateTime);
     }
 }

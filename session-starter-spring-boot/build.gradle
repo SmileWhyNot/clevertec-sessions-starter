@@ -8,10 +8,6 @@ plugins {
 group = 'vlad.kuchuk'
 version = '0.0.1-SNAPSHOT'
 
-repositories {
-    mavenCentral()
-}
-
 java {
     sourceCompatibility = '17'
 }
@@ -22,6 +18,10 @@ configurations {
     }
 }
 
+repositories {
+    mavenCentral()
+}
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter'
     implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -30,6 +30,12 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+}
+
+compileJava {
+    options.compilerArgs += [
+            '-Amapstruct.defaultComponentModel=spring'
+    ]
 }
 
 test {
