@@ -16,9 +16,11 @@ public class SessionProviderCommunicator {
     public Mono<Session> getOrCreateSessionIfNotExist(AuthInfoImpl authInfo) {
         log.info("Entered SessionProviderCommunicator class");
         log.info("Sending request to Session-service...");
-        return webClient.post()
-                    .bodyValue(authInfo)
-                    .retrieve()
-                    .bodyToMono(Session.class);
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .queryParam("login", authInfo.login())
+                        .build())
+                .retrieve()
+                .bodyToMono(Session.class);
     }
 }

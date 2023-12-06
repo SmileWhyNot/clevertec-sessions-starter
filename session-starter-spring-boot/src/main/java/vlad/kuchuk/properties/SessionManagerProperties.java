@@ -1,6 +1,7 @@
 package vlad.kuchuk.properties;
 
 import lombok.Data;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -17,15 +18,4 @@ public class SessionManagerProperties {
     private String sessionProviderUrl;
     private final Set<String> blackList = new HashSet<>();
     private final Set<Class<? extends BlackListProvider>> blackListProviders = new HashSet<>();
-
-    public void setSessionProviderUrl(String sessionProviderUrl) {
-        this.sessionProviderUrl = sessionProviderUrl == null ?
-                "http://localhost:8181/api/v1/sessions" : sessionProviderUrl;
-
-        log.info("sessionProviderUrl is set to" + this.sessionProviderUrl);
-    }
-
-    public void setEnable(Boolean enable) {
-        this.enable = enable != null && enable;
-    }
 }

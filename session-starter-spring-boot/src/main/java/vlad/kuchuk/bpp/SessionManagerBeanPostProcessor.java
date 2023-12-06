@@ -36,7 +36,6 @@ public class SessionManagerBeanPostProcessor implements BeanPostProcessor, BeanF
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
         log.info("Entered postProcessAfterInitialization");
         log.info("Method postProcessAfterInitialization params: bean=" + bean + " beanName=" + beanName);
-        log.info("beanNamesWithAnnotatedMethods" + beanNamesWithAnnotatedMethods.values());
         return Optional.ofNullable(beanNamesWithAnnotatedMethods.get(beanName))
                 .map(clazz -> getSessionProxy(bean))
                 .orElse(bean);

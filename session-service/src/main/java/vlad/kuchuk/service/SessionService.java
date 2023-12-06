@@ -2,19 +2,16 @@ package vlad.kuchuk.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vlad.kuchuk.dto.SessionMapper;
 import vlad.kuchuk.dto.SessionRequest;
 import vlad.kuchuk.dto.SessionResponse;
-import vlad.kuchuk.entity.Session;
 import vlad.kuchuk.exception.SessionCreationException;
-import vlad.kuchuk.sessioncleaner.SessionCleanupProperties;
 import vlad.kuchuk.repository.SessionRepository;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 @Service
@@ -27,13 +24,14 @@ public class SessionService {
     private final SessionMapper sessionMapper;
 
     @Transactional
-    public SessionResponse findSession(SessionRequest request) {
-        return sessionRepository.findByLogin(request.login())
+    public SessionResponse findSessionByLogin(String login) {
+        return sessionRepository.findByLogin(login)
                 .map(sessionMapper::toDto)
-                .orElseGet(() -> createSession(request));
+                .orElseGet(() -> createSession(login));
     }
 
-    private SessionResponse createSession(SessionRequest request) {
+    private SessionResponse createSession(String login) {
+        SessionRequest request = new SessionRequest(login);
         return Stream.of(request)
                 .map(sessionMapper::toEntity)
                 .map(sessionRepository::save)

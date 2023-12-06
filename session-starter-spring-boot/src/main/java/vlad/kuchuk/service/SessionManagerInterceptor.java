@@ -19,6 +19,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -32,14 +33,11 @@ public class SessionManagerInterceptor implements MethodInterceptor {
 
     @Override
     public Object intercept(Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable {
-        log.info("Entered SessionManagerInterceptor method - intercept");
         if (method.isAnnotationPresent(SessionManager.class)) {
-            log.info("Method is Annotated with SessionManager");
             SessionManager annotation = method.getAnnotation(SessionManager.class);
-
             String extractedLogin = extractLoginFromArgs(args, method.getParameters());
-            log.info("Extracted login = " + extractedLogin);
-            Mono.fromCallable(() -> getResultedProviders(annotation.includeDefaultBlackListSource(), annotation.blackListProviders()))
+
+            CompletableFuture<Void> asyncWork = Mono.fromCallable(() -> getResultedProviders(annotation.includeDefaultBlackListSource(), annotation.blackListProviders()))
                     .flatMap(blackLists -> Mono.fromCallable(() -> getBlackListsFromProviders(blackLists)))
                     .map(blackLists -> combineBlackLists(annotation.blackList(), blackLists))
                     .flatMapMany(blackList -> Flux.fromArray(args)
@@ -47,7 +45,7 @@ public class SessionManagerInterceptor implements MethodInterceptor {
                             .map(AuthInfo.class::cast)
                             .filter(authInfo -> {
                                 if (!isLoginNotInBlackList(extractedLogin, blackList) || !isSessionProvidedInParams(args)) {
-                                    throw new SessionManagerException("You haven't provided Session in params or you Login is in blacklist");
+                                    throw new SessionManagerException("You haven't provided Session in params or your Login is in blacklist");
                                 }
                                 return true;
                             })
@@ -55,15 +53,16 @@ public class SessionManagerInterceptor implements MethodInterceptor {
                             .switchIfEmpty(Mono.error(new SessionManagerException("Method annotated with @SessionManager must include Session in params, and object that implements AuthInfo")))
                             .doOnNext(session -> {
                                 try {
-                                    MethodHandles.lookup().unreflect(method).invoke(originalBean, substituteArgs(args, session));
-                                } catch (Throwable throwable) {
-                                    throw new SessionManagerException(throwable.getMessage(), throwable);
+                                    method.invoke(originalBean, substituteArgs(args, session));
+                                } catch (IllegalAccessException | InvocationTargetException e) {
+                                    throw new SessionManagerException("intercept exception" + e.getMessage());
                                 }
                             })
                     )
-                    .subscribe();
+                    .then().toFuture();
+            asyncWork.join();
+            return null;
         }
-        log.info("leaving intercept method");
         return method.invoke(originalBean, args);
     }
 
@@ -114,6 +113,7 @@ public class SessionManagerInterceptor implements MethodInterceptor {
     }
 
     private boolean isLoginNotInBlackList(String login, Set<String> blackList) {
+        log.info("login =" + login + "blackList = " + blackList);
         return !blackList.contains(login);
     }
 
