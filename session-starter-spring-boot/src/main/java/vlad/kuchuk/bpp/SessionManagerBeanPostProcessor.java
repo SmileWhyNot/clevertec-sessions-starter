@@ -22,20 +22,16 @@ public class SessionManagerBeanPostProcessor implements BeanPostProcessor, BeanF
 
     @Override
     public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
-        log.info("Entered SessionManagerBeanPostProcessor");
         log.info("Method postProcessBeforeInitialization params: bean=" + bean + " beanName=" + beanName);
         Class<?> clazz = bean.getClass();
         Arrays.stream(clazz.getMethods())
                 .filter(method -> method.isAnnotationPresent(SessionManager.class))
                 .forEach(method -> beanNamesWithAnnotatedMethods.put(beanName, clazz));
-        log.info("beanNamesWithAnnotatedMethods" + beanNamesWithAnnotatedMethods.values());
         return bean;
     }
 
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
-        log.info("Entered postProcessAfterInitialization");
-        log.info("Method postProcessAfterInitialization params: bean=" + bean + " beanName=" + beanName);
         return Optional.ofNullable(beanNamesWithAnnotatedMethods.get(beanName))
                 .map(clazz -> getSessionProxy(bean))
                 .orElse(bean);

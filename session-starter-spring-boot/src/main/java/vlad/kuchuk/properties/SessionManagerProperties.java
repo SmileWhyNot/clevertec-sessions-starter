@@ -1,10 +1,8 @@
 package vlad.kuchuk.properties;
 
 import lombok.Data;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 import vlad.kuchuk.service.BlackListProvider;
 
 import java.util.HashSet;

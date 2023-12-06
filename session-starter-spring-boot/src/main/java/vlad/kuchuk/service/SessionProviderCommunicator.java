@@ -4,13 +4,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
-import reactor.core.publisher.Mono;
 import vlad.kuchuk.model.AuthInfoImpl;
 import vlad.kuchuk.model.Session;
-import vlad.kuchuk.properties.SessionServiceNotAvailable;
+import vlad.kuchuk.exception.SessionServiceNotAvailableException;
 
-@RequiredArgsConstructor
 @Slf4j
+@RequiredArgsConstructor
 public class SessionProviderCommunicator {
 
     private final WebClient webClient;
@@ -27,7 +26,8 @@ public class SessionProviderCommunicator {
                     .bodyToMono(Session.class)
                     .block();
         } catch (WebClientRequestException e) {
-            throw new SessionServiceNotAvailable("Request to Session-service took to much time. Service is not available");
+            log.error("WebClientRequestException caught. Session service is not available or incorrect url");
+            throw new SessionServiceNotAvailableException("Request to Session-service took to much time. Service is not available or incorrect URL configured");
         }
     }
 }

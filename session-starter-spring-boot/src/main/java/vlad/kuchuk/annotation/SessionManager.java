@@ -11,9 +11,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface SessionManager {
-
     String[] blackList() default {};
     boolean includeDefaultBlackListSource() default true;
     Class<? extends BlackListProvider>[] blackListProviders() default DefaultBlackListProvider.class;
-
 }

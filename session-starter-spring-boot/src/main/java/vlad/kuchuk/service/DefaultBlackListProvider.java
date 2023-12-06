@@ -14,7 +14,7 @@ public class DefaultBlackListProvider implements BlackListProvider {
 
     @Override
     public Set<String> getBlackList() {
-        log.info("Blacklist found " + sessionManagerProperties.getBlackList());
+        log.info("Default Blacklist found in properties = " + sessionManagerProperties.getBlackList());
         return sessionManagerProperties.getBlackList();
     }
 }

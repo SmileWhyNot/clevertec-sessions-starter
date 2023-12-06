@@ -5,8 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.cglib.proxy.MethodInterceptor;
 import org.springframework.cglib.proxy.MethodProxy;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import vlad.kuchuk.annotation.SessionManager;
 import vlad.kuchuk.exception.SessionManagerException;
 import vlad.kuchuk.model.AuthInfo;
@@ -14,13 +12,12 @@ import vlad.kuchuk.model.AuthInfoImpl;
 import vlad.kuchuk.model.Session;
 import vlad.kuchuk.properties.SessionManagerProperties;
 
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @RequiredArgsConstructor
@@ -38,38 +35,51 @@ public class SessionManagerInterceptor implements MethodInterceptor {
             SessionManager annotation = method.getAnnotation(SessionManager.class);
             String extractedLogin = extractLoginFromArgs(args, method.getParameters());
 
-            Set<String> blackListsFromProviders = getBlackListsFromProviders(getResultedProviders(annotation));
-            String[] blackListsFromAnnotation = annotation.blackList();
-            Set<String> blackList = combineBlackLists(blackListsFromAnnotation, blackListsFromProviders);
+            Set<String> blackList = Optional.of(annotation).stream()
+                    .map(annot -> getBlackListsFromProviders(getResultedProviders(annot)))
+                    .map(blackListsFromProviders -> combineBlackLists(annotation.blackList(), blackListsFromProviders))
+                    .flatMap(Collection::stream)
+                    .collect(Collectors.toSet());
 
-            if (isLoginNotInBlackList(extractedLogin, blackList)
-                    && isSessionProvidedInParams(args)) {
-                Session session = providerCommunicator.getOrCreateSessionIfNotExist(new AuthInfoImpl(extractedLogin));
-
-                return method.invoke(originalBean, substituteArgs(args, session));
-            } else {
-                throw new SessionManagerException("Method annotated with @SessionManager must contain args: class implementing AuthInfo; Session class." +
-                        "Request login must not be in BlackList");
-            }
+            return Stream.of(args)
+                    .filter(AuthInfo.class::isInstance)
+                    .map(AuthInfo.class::cast)
+                    .map(AuthInfo::login)
+                    .filter(login -> isLoginNotInBlackList(login, blackList))
+                    .findFirst()
+                    .map(login -> {
+                        if (isSessionProvidedInParams(args)) {
+                            return args;
+                        } else {
+                            throw new SessionManagerException("Session not provided in method arguments");
+                        }
+                    })
+                    .map(a -> providerCommunicator.getOrCreateSessionIfNotExist(new AuthInfoImpl(extractedLogin)))
+                    .map(session -> {
+                        try {
+                            return method.invoke(originalBean, substituteArgs(args, session));
+                        } catch (IllegalAccessException | InvocationTargetException e) {
+                            log.error("method.invoke(originalBean, substituteArgs(args, session)); cause error = " + e.getCause());
+                            throw new SessionManagerException("Failed to call method.invoke(originalBean, substituteArgs(args, session)); cause error = " + e.getCause());
+                        }
+                    })
+                    .orElseThrow(() -> new SessionManagerException("Blacklist contains this login or it wasn't found in method arguments"));
         }
         return method.invoke(originalBean, args);
     }
 
-
     private Set<Class<? extends BlackListProvider>> getResultedProviders(SessionManager annotation) {
         Class<? extends BlackListProvider>[] providersFromAnnotation = annotation.blackListProviders();
-        Set<Class<? extends BlackListProvider>> blackListProviders = Stream.concat(
+        return Stream.concat(
                         Arrays.stream(providersFromAnnotation),
                         sessionManagerProperties.getBlackListProviders().stream()
                 )
                 .filter(provider -> annotation.includeDefaultBlackListSource() || !provider.equals(DefaultBlackListProvider.class))
                 .collect(Collectors.toSet());
-
-        return blackListProviders;
     }
 
     private Set<String> getBlackListsFromProviders(Set<Class<? extends BlackListProvider>> providers) {
-        Set<String> collect = providers.stream()
+        return providers.stream()
                 .map(providerClass -> {
                     try {
                         if (providerClass.equals(DefaultBlackListProvider.class)) {
@@ -87,29 +97,35 @@ public class SessionManagerInterceptor implements MethodInterceptor {
                 })
                 .flatMap(Set::stream)
                 .collect(Collectors.toSet());
-        return collect;
     }
 
     private Set<String> combineBlackLists(String[] paramBlackList, Set<String> blackLists) {
-        Set<String> finalBlackLists = new HashSet<>(Arrays.asList(paramBlackList));
-        finalBlackLists.addAll(blackLists);
-        return finalBlackLists;
+        return Stream.concat(
+                Arrays.stream(paramBlackList),
+                        blackLists.stream()
+                )
+                .collect(Collectors.toSet());
     }
 
     private String extractLoginFromArgs(Object[] args, Parameter[] parameters) {
-        for (int i = 0; i < args.length; i++) {
-            Parameter parameter = parameters[i];
-            if (AuthInfo.class.isAssignableFrom(parameter.getType())) {
-                AuthInfo login = (AuthInfo) args[i];
-                return Optional.ofNullable(login.login())
-                        .orElseThrow(() -> new SessionManagerException("Login not found in AuthInfo"));
-            }
-        }
-        throw new SessionManagerException("Login not found in method arguments");
+        return IntStream.range(0, args.length)
+                .mapToObj(i -> {
+                    Parameter parameter = parameters[i];
+                    if (AuthInfo.class.isAssignableFrom(parameter.getType())) {
+                        AuthInfo login = (AuthInfo) args[i];
+                        return Optional.ofNullable(login.login())
+                                .filter(s -> !s.trim().isEmpty())
+                                .orElseThrow(() -> new SessionManagerException("Login not found or empty in AuthInfo"));
+                    }
+                    return null;
+                })
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElseThrow(() -> new SessionManagerException("Login not found in method arguments"));
     }
 
     private boolean isLoginNotInBlackList(String login, Set<String> blackList) {
-        log.info("login =" + login + "blackList = " + blackList);
+        log.info("login = " + login + " blackList = " + blackList);
         return !blackList.contains(login);
     }
 
@@ -124,5 +140,4 @@ public class SessionManagerInterceptor implements MethodInterceptor {
                                 session : arg
                 ).toArray();
     }
-
 }
