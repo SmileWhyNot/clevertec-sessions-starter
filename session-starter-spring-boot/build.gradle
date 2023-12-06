@@ -20,22 +20,23 @@ configurations {
 
 repositories {
     mavenCentral()
+    mavenLocal()
+}
+
+ext {
+    set('springBootVersion', "3.2.0")
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
+    api "org.springframework.boot:spring-boot-starter:${springBootVersion}"
+    api "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
+    api "org.springframework.boot:spring-boot-starter-webflux:${springBootVersion}"
+    implementation 'io.projectreactor.netty:reactor-netty'
 
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
+    implementation 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
-    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-}
-
-compileJava {
-    options.compilerArgs += [
-            '-Amapstruct.defaultComponentModel=spring'
-    ]
+    annotationProcessor "org.springframework.boot:spring-boot-configuration-processor:${springBootVersion}"
 }
 
 test {
