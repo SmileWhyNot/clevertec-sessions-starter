@@ -30,6 +30,7 @@ public class SessionManagerInterceptor implements MethodInterceptor {
     private final Object originalBean;
     private final SessionProviderCommunicator providerCommunicator;
     private final SessionManagerProperties sessionManagerProperties;
+    private final BeanFactory beanFactory;
 
     @Override
     public Object intercept(Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable {
@@ -37,61 +38,56 @@ public class SessionManagerInterceptor implements MethodInterceptor {
             SessionManager annotation = method.getAnnotation(SessionManager.class);
             String extractedLogin = extractLoginFromArgs(args, method.getParameters());
 
-            CompletableFuture<Void> asyncWork = Mono.fromCallable(() -> getResultedProviders(annotation.includeDefaultBlackListSource(), annotation.blackListProviders()))
-                    .flatMap(blackLists -> Mono.fromCallable(() -> getBlackListsFromProviders(blackLists)))
-                    .map(blackLists -> combineBlackLists(annotation.blackList(), blackLists))
-                    .flatMapMany(blackList -> Flux.fromArray(args)
-                            .filter(AuthInfo.class::isInstance)
-                            .map(AuthInfo.class::cast)
-                            .filter(authInfo -> {
-                                if (!isLoginNotInBlackList(extractedLogin, blackList) || !isSessionProvidedInParams(args)) {
-                                    throw new SessionManagerException("You haven't provided Session in params or your Login is in blacklist");
-                                }
-                                return true;
-                            })
-                            .flatMap(authInfo -> providerCommunicator.getOrCreateSessionIfNotExist(new AuthInfoImpl(extractedLogin)))
-                            .switchIfEmpty(Mono.error(new SessionManagerException("Method annotated with @SessionManager must include Session in params, and object that implements AuthInfo")))
-                            .doOnNext(session -> {
-                                try {
-                                    method.invoke(originalBean, substituteArgs(args, session));
-                                } catch (IllegalAccessException | InvocationTargetException e) {
-                                    throw new SessionManagerException("intercept exception" + e.getMessage());
-                                }
-                            })
-                    )
-                    .then().toFuture();
-            asyncWork.join();
-            return null;
+            Set<String> blackListsFromProviders = getBlackListsFromProviders(getResultedProviders(annotation));
+            String[] blackListsFromAnnotation = annotation.blackList();
+            Set<String> blackList = combineBlackLists(blackListsFromAnnotation, blackListsFromProviders);
+
+            if (isLoginNotInBlackList(extractedLogin, blackList)
+                    && isSessionProvidedInParams(args)) {
+                Session session = providerCommunicator.getOrCreateSessionIfNotExist(new AuthInfoImpl(extractedLogin));
+
+                return method.invoke(originalBean, substituteArgs(args, session));
+            } else {
+                throw new SessionManagerException("Method annotated with @SessionManager must contain args: class implementing AuthInfo; Session class." +
+                        "Request login must not be in BlackList");
+            }
         }
         return method.invoke(originalBean, args);
     }
 
 
-
-    private Set<Class<? extends BlackListProvider>> getResultedProviders(boolean isDefaultBlackListSourceEnabled,
-                                                                         Class<? extends BlackListProvider>[] providers) {
-        return Stream.concat(
-                        Arrays.stream(providers),
+    private Set<Class<? extends BlackListProvider>> getResultedProviders(SessionManager annotation) {
+        Class<? extends BlackListProvider>[] providersFromAnnotation = annotation.blackListProviders();
+        Set<Class<? extends BlackListProvider>> blackListProviders = Stream.concat(
+                        Arrays.stream(providersFromAnnotation),
                         sessionManagerProperties.getBlackListProviders().stream()
                 )
-                .filter(provider -> isDefaultBlackListSourceEnabled || !provider.equals(DefaultBlackListProvider.class))
+                .filter(provider -> annotation.includeDefaultBlackListSource() || !provider.equals(DefaultBlackListProvider.class))
                 .collect(Collectors.toSet());
+
+        return blackListProviders;
     }
 
     private Set<String> getBlackListsFromProviders(Set<Class<? extends BlackListProvider>> providers) {
-        return providers.stream()
+        Set<String> collect = providers.stream()
                 .map(providerClass -> {
                     try {
-                        BlackListProvider provider = providerClass.getDeclaredConstructor().newInstance();
-                        return provider.getBlackList();
+                        if (providerClass.equals(DefaultBlackListProvider.class)) {
+                            DefaultBlackListProvider bean = beanFactory.getBean(DefaultBlackListProvider.class);
+                            return bean.getBlackList();
+                        } else {
+                            BlackListProvider provider = providerClass.getDeclaredConstructor().newInstance();
+                            return provider.getBlackList();
+                        }
                     } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
                              NoSuchMethodException e) {
-                        log.error(e.getMessage());
+                        log.error("getBlackListsFromProviders caught error " + e.getMessage());
                         return Collections.<String>emptySet();
                     }
                 })
                 .flatMap(Set::stream)
                 .collect(Collectors.toSet());
+        return collect;
     }
 
     private Set<String> combineBlackLists(String[] paramBlackList, Set<String> blackLists) {

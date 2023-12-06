@@ -52,7 +52,7 @@ public class SessionManagerBeanPostProcessor implements BeanPostProcessor, BeanF
 
         Enhancer enhancer = new Enhancer();
         enhancer.setSuperclass(bean.getClass());
-        enhancer.setCallback(new SessionManagerInterceptor(bean, sessionProviderCommunicator, sessionManagerProperties));
+        enhancer.setCallback(new SessionManagerInterceptor(bean, sessionProviderCommunicator, sessionManagerProperties, beanFactory));
 
         return isPresentDefaultConstructor(bean)
                 ? enhancer.create()
