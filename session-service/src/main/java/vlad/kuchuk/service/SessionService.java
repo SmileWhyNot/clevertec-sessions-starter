@@ -11,7 +11,6 @@ import vlad.kuchuk.exception.SessionCreationException;
 import vlad.kuchuk.repository.SessionRepository;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.stream.Stream;
 
 @Service

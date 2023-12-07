@@ -9,7 +9,7 @@ import java.util.Optional;
 
 @Repository
 public interface SessionRepository extends JpaRepository<Session, Long> {
-    Optional<Session> findByLogin(String login);
 
+    Optional<Session> findByLogin(String login);
     void deleteSessionByOpeningTimeBefore(LocalDateTime currentTime);
 }

@@ -2,8 +2,6 @@ package vlad.kuchuk.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
 
 import java.io.Serializable;
 
