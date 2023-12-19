@@ -1,8 +1,9 @@
 package vlad.kuchuk.blackList;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.DefaultResourceLoader;
-import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 import vlad.kuchuk.service.BlackListProvider;
@@ -17,22 +18,24 @@ import java.util.stream.Collectors;
 @Component
 @Slf4j
 public class FileBlackListProvider implements BlackListProvider {
-    private static final String FILE_PATH = "classpath:blacklist.txt";
-    private final ResourceLoader resourceLoader = new DefaultResourceLoader();
+    private final String filepath;
+    private final ResourceLoader resourceLoader;
+
+    @Autowired
+    public FileBlackListProvider(@Value("${blacklist.path}") String filepath) {
+        this.filepath = filepath;
+        this.resourceLoader = new DefaultResourceLoader();
+    }
+
 
     @Override
     public Set<String> getBlackList() {
-        try {
-            Resource resource = resourceLoader.getResource(FILE_PATH);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(resource.getInputStream()));
-
-            Set<String> blackList = reader.lines().collect(Collectors.toSet());
-
-            reader.close();
-
-            return blackList;
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(resourceLoader.getResource(filepath).getInputStream()))
+        ) {
+            return reader.lines().collect(Collectors.toSet());
         } catch (IOException e) {
-            log.error("Failed to read blacklist from file :" + e.getCause());
+            log.error("Failed to read blacklist from file :", e);
             return Collections.emptySet();
         }
     }

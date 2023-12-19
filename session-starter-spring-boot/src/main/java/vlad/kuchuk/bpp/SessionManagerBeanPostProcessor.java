@@ -22,7 +22,7 @@ public class SessionManagerBeanPostProcessor implements BeanPostProcessor, BeanF
 
     @Override
     public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
-        log.info("Method postProcessBeforeInitialization params: bean=" + bean + " beanName=" + beanName);
+        log.info("Method postProcessBeforeInitialization params: bean = {}, beanName = {}", bean, beanName);
         Class<?> clazz = bean.getClass();
         Arrays.stream(clazz.getMethods())
                 .filter(method -> method.isAnnotationPresent(SessionManager.class))

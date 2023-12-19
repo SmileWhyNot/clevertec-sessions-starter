@@ -11,7 +11,7 @@ import vlad.kuchuk.exception.SessionCreationException;
 import vlad.kuchuk.repository.SessionRepository;
 
 import java.time.LocalDateTime;
-import java.util.stream.Stream;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -31,12 +31,11 @@ public class SessionService {
 
     private SessionResponse createSession(String login) {
         SessionRequest request = new SessionRequest(login);
-        return Stream.of(request)
-                .map(sessionMapper::toEntity)
-                .map(sessionRepository::save)
-                .map(sessionMapper::toDto)
-                .findFirst()
-                .orElseThrow(() -> new SessionCreationException("Failed to create session"));
+        return Optional.of(request)
+                       .map(sessionMapper::toEntity)
+                       .map(sessionRepository::save)
+                       .map(sessionMapper::toDto)
+                       .orElseThrow(() -> new SessionCreationException("Failed to create session"));
     }
 
     @Transactional

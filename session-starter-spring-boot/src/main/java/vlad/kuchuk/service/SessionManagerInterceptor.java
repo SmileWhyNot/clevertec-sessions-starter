@@ -81,19 +81,13 @@ public class SessionManagerInterceptor implements MethodInterceptor {
     private Set<String> getBlackListsFromProviders(Set<Class<? extends BlackListProvider>> providers) {
         return providers.stream()
                 .map(providerClass -> {
-                    try {
                         if (providerClass.equals(DefaultBlackListProvider.class)) {
                             DefaultBlackListProvider bean = beanFactory.getBean(DefaultBlackListProvider.class);
                             return bean.getBlackList();
                         } else {
-                            BlackListProvider provider = providerClass.getDeclaredConstructor().newInstance();
+                            BlackListProvider provider = beanFactory.getBean(providerClass);
                             return provider.getBlackList();
                         }
-                    } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
-                             NoSuchMethodException e) {
-                        log.error("getBlackListsFromProviders caught error " + e.getMessage());
-                        return Collections.<String>emptySet();
-                    }
                 })
                 .flatMap(Set::stream)
                 .collect(Collectors.toSet());

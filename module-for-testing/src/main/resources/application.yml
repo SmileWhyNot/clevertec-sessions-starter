@@ -1,3 +1,7 @@
+blacklist:
+  path: classpath:blacklist.txt
+server:
+  port: 8080
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/sessions-starter
@@ -15,8 +19,6 @@ spring:
         format_sql: true
     database: postgresql
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-server:
-  port: 8080
 
 session:
   manager:

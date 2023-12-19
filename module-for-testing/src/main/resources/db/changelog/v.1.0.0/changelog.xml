@@ -8,6 +8,6 @@
         <tagDatabase tag="v.1.0.0"/>
     </changeSet>
 
-    <include file="create-user-table.xml" relativeToChangelogFile="true"/>
+    <include file="create-users-table.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

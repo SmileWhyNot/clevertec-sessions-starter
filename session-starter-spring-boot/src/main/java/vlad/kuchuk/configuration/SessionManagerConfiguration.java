@@ -5,11 +5,13 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Role;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 import vlad.kuchuk.bpp.SessionManagerBeanPostProcessor;
 import vlad.kuchuk.listener.ApplicationStartListener;
@@ -38,7 +40,7 @@ public class SessionManagerConfiguration {
 
     @Bean
     public SessionProviderCommunicator sessionProviderCommunicator(SessionManagerProperties sessionManagerProperties) {
-        return new SessionProviderCommunicator(webClient(sessionManagerProperties));
+        return new SessionProviderCommunicator(restTemplate(), sessionManagerProperties);
     }
 
     @Bean
@@ -47,11 +49,10 @@ public class SessionManagerConfiguration {
     }
 
     @Bean
-    public WebClient webClient(SessionManagerProperties sessionManagerProperties) {
-        return WebClient.builder()
+    public RestTemplate restTemplate() {
+        return new RestTemplateBuilder()
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .baseUrl(sessionManagerProperties.getSessionProviderUrl())
                 .build();
     }
 }
