@@ -1,0 +1,32 @@
+blacklist:
+  path: classpath:blacklist.txt
+server:
+  port: 8080
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/sessions-starter
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    database: postgresql
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+session:
+  manager:
+    enable: true
+    black-list:
+      - block1
+      - block2
+    black-list-providers:
+      - vlad.kuchuk.service.DefaultBlackListProvider
+      - vlad.kuchuk.blackList.FileBlackListProvider
+    session-provider-url: "http://localhost:8181/api/v1/sessions"
